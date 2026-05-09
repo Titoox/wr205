@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R204/R205 — Flashcards</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0e0f;
+    --surface: #161718;
+    --surface2: #1e2021;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #f0ede8;
+    --muted: #8a8782;
+    --accent: #c9a96e;
+    --accent2: #e8c88a;
+    --green: #5a9e6f;
+    --red: #c0564e;
+    --blue: #5b8ab5;
+    --card-front: #1a1b1d;
+    --card-back: #181c1a;
+    --flip-duration: 0.55s;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  header {
+    padding: 2rem 2.5rem 1.5rem;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2rem;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  header span.sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 0;
+    padding: 0.75rem 2.5rem;
+    border-bottom: 0.5px solid var(--border);
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .stat-item strong {
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .stat-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .progress-bar {
+    flex: 1;
+    min-width: 160px;
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* Category tabs */
+  .tabs {
+    display: flex;
+    gap: 0.25rem;
+    padding: 1rem 2.5rem 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+
+  .tab {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    background: transparent;
+    border: 0.5px solid var(--border);
+    color: var(--muted);
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .tab:hover { border-color: var(--border2); color: var(--text); }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #0d0e0f; }
+
+  /* Card counter */
+  .card-counter {
+    padding: 1.25rem 2.5rem 0.5rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Main card area */
+  .card-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 2.5rem 2rem;
+    min-height: 420px;
+  }
+
+  /* 3D flip card */
+  .card-scene {
+    width: 100%;
+    max-width: 680px;
+    height: 300px;
+    perspective: 1200px;
+    cursor: pointer;
+  }
+
+  .card-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform var(--flip-duration) cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-inner.flipped {
+    transform: rotateY(180deg);
+  }
+
+  .card-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 12px;
+    padding: 2rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: 0.5px solid var(--border2);
+    overflow: hidden;
+  }
+
+  .card-front {
+    background: var(--card-front);
+  }
+
+  .card-back {
+    background: var(--card-back);
+    transform: rotateY(180deg);
+    border-color: rgba(201, 169, 110, 0.25);
+  }
+
+  .card-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+
+  .card-back .card-label {
+    color: var(--accent);
+  }
+
+  .card-question {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.5rem;
+    line-height: 1.4;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  .card-answer {
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: var(--text);
+  }
+
+  .card-answer strong {
+    color: var(--accent2);
+    font-weight: 600;
+  }
+
+  .card-hint {
+    position: absolute;
+    bottom: 1.25rem;
+    right: 1.5rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .flip-icon {
+    width: 14px;
+    height: 14px;
+    opacity: 0.5;
+  }
+
+  /* Corner decoration */
+  .card-front::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 60px; height: 60px;
+    background: linear-gradient(225deg, rgba(201,169,110,0.06) 0%, transparent 60%);
+    border-radius: 0 12px 0 0;
+    pointer-events: none;
+  }
+
+  /* Action buttons */
+  .card-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    width: 100%;
+    max-width: 680px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    border: 0.5px solid var(--border2);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.18s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .btn:hover { color: var(--text); border-color: var(--border2); background: var(--surface2); }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-wrong { color: #c0564e; border-color: rgba(192,86,78,0.3); }
+  .btn-wrong:hover { background: rgba(192,86,78,0.1); border-color: rgba(192,86,78,0.5); color: #e07a73; }
+
+  .btn-correct { color: #5a9e6f; border-color: rgba(90,158,111,0.3); }
+  .btn-correct:hover { background: rgba(90,158,111,0.1); border-color: rgba(90,158,111,0.5); color: #7dc494; }
+
+  .btn-skip { color: var(--muted); }
+
+  /* Nav buttons */
+  .nav-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    width: 100%;
+    max-width: 680px;
+    justify-content: space-between;
+  }
+
+  .btn-nav {
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 0.5px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    transition: all 0.18s;
+  }
+  .btn-nav:hover { color: var(--text); border-color: var(--border2); }
+
+  /* Category badge on card */
+  .category-badge {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.5rem;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 0.5px solid var(--border);
+  }
+
+  /* Mastery grid */
+  .mastery-section {
+    padding: 1.5rem 2.5rem;
+    border-top: 0.5px solid var(--border);
+  }
+
+  .mastery-title {
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+
+  .mastery-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .mastery-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    background: var(--surface2);
+    border: 0.5px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .mastery-dot:hover { border-color: var(--border2); transform: scale(1.1); }
+  .mastery-dot.correct { background: rgba(90,158,111,0.35); border-color: rgba(90,158,111,0.5); }
+  .mastery-dot.wrong { background: rgba(192,86,78,0.25); border-color: rgba(192,86,78,0.4); }
+  .mastery-dot.current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+  /* Empty state / completion */
+  .completion {
+    text-align: center;
+    padding: 3rem 2rem;
+  }
+  .completion h2 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2rem;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+  }
+  .completion p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .btn-restart {
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #0d0e0f;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.2s;
+  }
+  .btn-restart:hover { background: var(--accent2); transform: translateY(-1px); }
+
+  /* Shuffle indicator */
+  .mode-badge {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(201,169,110,0.15);
+    color: var(--accent);
+    border: 0.5px solid rgba(201,169,110,0.3);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-left: auto;
+    cursor: pointer;
+  }
+
+  @media (max-width: 600px) {
+    header, .stats-bar, .tabs, .card-area, .card-counter, .mastery-section {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+    .card-scene { height: 260px; }
+    .card-question { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Stratégies de communication</h1>
+  <span class="sub">R204 · R205 · BUT MMI S2</span>
+  <span class="mode-badge" id="shuffleBtn" onclick="toggleShuffle()" title="Activer/désactiver l'ordre aléatoire">🔀 shuffle</span>
+</header>
+
+<div class="stats-bar">
+  <div class="stat-item">
+    <span class="stat-dot" style="background:#5a9e6f"></span>
+    <strong id="correctCount">0</strong> correctes
+  </div>
+  <div class="stat-item">
+    <span class="stat-dot" style="background:#c0564e"></span>
+    <strong id="wrongCount">0</strong> à revoir
+  </div>
+  <div class="stat-item">
+    <span class="stat-dot" style="background:#8a8782"></span>
+    <strong id="totalCount">0</strong> total
+  </div>
+  <div class="progress-bar" style="margin-left: auto;">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+  <span style="font-size:0.75rem; color:var(--muted); font-family:'DM Mono',monospace" id="progressPct">0%</span>
+</div>
+
+<div class="tabs" id="tabsContainer">
+  <button class="tab active" onclick="filterCategory('all')">Tout</button>
+</div>
+
+<div class="card-counter" id="cardCounter">Carte 1 / 0</div>
+
+<div class="card-area" id="cardArea">
+  <div class="card-scene" id="cardScene" onclick="flipCard()">
+    <div class="card-inner" id="cardInner">
+      <div class="card-face card-front">
+        <div class="card-label">Question</div>
+        <div class="card-question" id="cardQuestion">Chargement...</div>
+        <span class="category-badge" id="cardCategory">—</span>
+        <div class="card-hint">
+          <svg class="flip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 4v6h6M23 20v-6h-6"/>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+          </svg>
+          cliquer pour retourner
+        </div>
+      </div>
+      <div class="card-face card-back">
+        <div class="card-label">Réponse</div>
+        <div class="card-answer" id="cardAnswer">—</div>
+        <span class="category-badge" id="cardCategoryBack" style="border-color:rgba(201,169,110,0.2); color:var(--accent)">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-actions" id="cardActions" style="display:none">
+    <button class="btn btn-wrong" onclick="markCard(false)">✗ À revoir</button>
+    <button class="btn btn-skip" onclick="nextCard()">→ Passer</button>
+    <button class="btn btn-correct" onclick="markCard(true)">✓ Compris</button>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn-nav" onclick="prevCard()">← Précédent</button>
+    <button class="btn-nav" onclick="resetDeck()">↺ Réinitialiser</button>
+    <button class="btn-nav" onclick="nextCard()">Suivant →</button>
+  </div>
+</div>
+
+<div class="mastery-section">
+  <div class="mastery-title">Progression carte par carte</div>
+  <div class="mastery-grid" id="masteryGrid"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'r204_r205_flashcards_v1';
+
+const ALL_CARDS = [
+  // === CM2 : Pub-média ===
+  {
+    cat: 'Pub-média & déclin',
+    q: 'Quelles sont les 3 grandes raisons du déclin de la publicité-média ?',
+    a: '<strong>1. Émiettement des médias</strong> (multiplication des chaînes TV → audience fragmentée)<br><strong>2. Médias interactifs</strong> (remise en cause du modèle unidirectionnel)<br><strong>3. Critique de la société de consommation</strong> (42% des français rejettent la pub, mouvement anti-pub, pollution visuelle)'
+  },
+  {
+    cat: 'Pub-média & déclin',
+    q: 'Qu\'est-ce que le "branding" par opposition à la pub-produit ?',
+    a: 'Le <strong>branding</strong> consiste à valoriser la marque dans son ensemble (image, valeurs, storytelling) plutôt que de promouvoir un produit spécifique. On suppose que l\'image de marque bénéficie à tous les produits.<br>Ex : Danone dépense autant en pub-produit qu\'en <strong>communication corporate</strong>.'
+  },
+  {
+    cat: 'Pub-média & déclin',
+    q: 'Quelles sont les 3 étapes d\'une campagne de publicité-média ?',
+    a: '<strong>1. Briefing créatif</strong> : description du contexte, cibles, objectifs, contraintes<br><strong>2. Production du message</strong> : élaboration, copy strategy, création publicitaire, pré-tests<br><strong>3. Médiaplanning</strong> : choix des canaux/médias, plan médias, négociation et achat d\'espaces'
+  },
+  {
+    cat: 'Pub-média & déclin',
+    q: 'Quelles sont les caractéristiques et spécificités de chaque grand média (TV, Presse, Affichage, Radio, Cinéma) ?',
+    a: '<strong>TV</strong> : très onéreux, puissant, ciblage par thème/horaire<br><strong>Presse</strong> : bon ciblage par multiplicité des titres, complicité avec l\'audience<br><strong>Affichage</strong> : sélectivité géographique parfaite, contesté pour pollution visuelle<br><strong>Radio</strong> : conso domestique/auto, ciblage thématique et géographique<br><strong>Cinéma</strong> : qualité/prestige, faibles investissements, spots longs, fort coût/audience'
+  },
+  {
+    cat: 'Pub-média & déclin',
+    q: 'Qu\'est-ce que la "critique de l\'École de Francfort" appliquée à la pub-média ? Illustrer avec la citation de Patrick Le Lay.',
+    a: 'Critique : la pub <strong>appauvrit le contenu des médias</strong> car ceux-ci doivent "préparer" des cerveaux disponibles pour les annonceurs.<br><br>Patrick Le Lay (ex-PDG TF1) : <em>ce que TF1 vend à Coca-Cola, c\'est du <strong>temps de cerveau humain disponible</strong></em>. Les émissions divertissent pour rendre le spectateur réceptif aux pubs.'
+  },
+  {
+    cat: 'Pub-média & déclin',
+    q: 'Quelles sont les 3 stratégies créatives pour contourner la désaffection du public envers la pub ?',
+    a: '<strong>1. Mises en scène spectaculaires</strong> sans affichage de marque (ex. bébés Evian)<br><strong>2. Marketing olfactif</strong> + communication globale avec relais digital ("sites compagnons")<br><strong>3. "Coup publicitaire"</strong> : se faire interdire une pub pour faire le buzz (ex. IKEA, pub sadomaso)'
+  },
+  {
+    cat: 'Pub-média & déclin',
+    q: 'Qu\'est-ce que la "communication corporate" ?',
+    a: 'Communication orientée vers l\'<strong>entreprise comme institution</strong> (et non vers ses produits). Elle valorise l\'entreprise et ses valeurs, son engagement sociétal, son histoire. C\'est distinct du branding produit. Souvent associée au <strong>RSE</strong> (responsabilité sociale).'
+  },
+
+  // === Types de communication ===
+  {
+    cat: 'Types de com',
+    q: 'Définir et distinguer : communication push, pull, relayée et entre consommateurs.',
+    a: '<strong>Push</strong> : message non sollicité envoyé par la marque (pub TV, bannière, catalogue boîte aux lettres)<br><strong>Pull</strong> : com "demandée" par le client (recherche Google, demande info en magasin, lien sponsorisé)<br><strong>Relayée</strong> : via influenceurs, relations-presse, community management<br><strong>Entre consommateurs</strong> : bouche-à-oreille, buzz, UGC'
+  },
+  {
+    cat: 'Types de com',
+    q: 'Qu\'est-ce que le "User Generated Content" (UGC) et pourquoi est-il précieux pour les marques ?',
+    a: 'Le <strong>UGC</strong> = commentaires, avis, publications générés par les internautes eux-mêmes (médias gagnés).<br>Précieux car : <strong>gage de crédibilité</strong> (promotion par un tiers objectivant) et <strong>notoriété gratuite</strong>.<br>Inconvénient : communication par nature <strong>moins maîtrisable</strong> par la marque.'
+  },
+  {
+    cat: 'Types de com',
+    q: 'Quelle est la différence entre "médias possédés", "médias achetés" et "médias gagnés" ?',
+    a: '<strong>Possédés</strong> : médias appartenant à l\'entreprise (site web, blog, app). Pas de coût d\'espace.<br><strong>Achetés</strong> : espaces achetés sur des sites tiers (bandeau, pop-up, liens sponsorisés). Comparable à la pub-média classique.<br><strong>Gagnés</strong> : UGC, mentions spontanées, buzz. Crédibilité maximale, maîtrise minimale.'
+  },
+
+  // === Modèles économiques ===
+  {
+    cat: 'Modèles économiques du web',
+    q: 'Quels sont les 2 grands modèles économiques sur Internet (modèle marchand vs gratuité) ?',
+    a: '<strong>Modèle marchand</strong> : vente directe de produits/services (e-commerce Amazon, accès payant presse). Fort CA, souvent peu de bénéfices pour les géants.<br><strong>Modèle de la gratuité</strong> : accès gratuit au contenu mais monétisation via pub, freemium (Spotify), ou dons (Wikipedia).'
+  },
+  {
+    cat: 'Modèles économiques du web',
+    q: 'Pourquoi le modèle de la gratuité est-il difficile à maintenir, et quels sont ses gagnants ?',
+    a: 'Problèmes : nécessite <strong>d\'élargir constamment l\'offre de contenus</strong>, investissement > revenus de monétisation → <strong>explosion de la bulle internet</strong>.<br><br>Gagnants : les <strong>régies publicitaires intermédiaires</strong> (ex. Google) qui font l\'interface entre annonceurs et éditeurs, et sont aussi éditrices de contenus.'
+  },
+
+  // === Display & Search ===
+  {
+    cat: 'Display & Search',
+    q: 'Qu\'est-ce que le "display" ? Quels sont ses 2 modes de tarification ?',
+    a: 'Le <strong>display</strong> = transposition de la pub-média classique : achat d\'espaces sur des sites pour afficher bannières/vidéos publicitaires.<br><br><strong>CPM</strong> : coût pour mille affichages (ex. 30€/1000 bannières) → insiste sur l\'exposition<br><strong>CPC</strong> : coût par clic (ex. 0,25€/clic) → prix aux enchères (Google premier prestataire)'
+  },
+  {
+    cat: 'Display & Search',
+    q: 'Qu\'est-ce que le "search" (SEA) ? Pourquoi est-il plus efficace que le display pour la conversion ?',
+    a: 'Le <strong>search</strong> = liens sponsorisés dans les résultats moteurs de recherche.<br>Technique <strong>pull</strong> : s\'appuie sur l\'activité de la cible (qui cherche activement). Présentation discrète (un lien).<br>Plus efficace car l\'internaute est déjà en intention d\'achat/information → <strong>meilleur taux de conversion</strong>.'
+  },
+  {
+    cat: 'Display & Search',
+    q: 'Pourquoi le taux de clic sur les bannières est-il si faible, et quand clique-t-on quand même ?',
+    a: 'Taux de clic : <strong>0,1% à 0,5%</strong> (très faible).<br>On clique quand : <strong>intérêt pour le produit</strong>, esthétisme de la bannière, gain lié au clic (concours), ou <strong>erreur</strong>.<br>Meilleur taux : vidéos (mais rarement vues en entier → "taux de complétion"), et pubs dans les <strong>fils d\'actualité des réseaux sociaux</strong>.'
+  },
+  {
+    cat: 'Display & Search',
+    q: 'Qu\'est-ce que le SEO ("référencement naturel") et en quoi se distingue-t-il du SEA ?',
+    a: '<strong>SEO</strong> (Search Engine Optimization) : classement "naturel" basé sur critères objectifs (mots-clés, nombre de backlinks, qualité du site). Gratuit mais long à construire.<br><strong>SEA</strong> : liens sponsorisés payants, positionnés en haut des résultats via enchères sur mots-clés. Seul le 1er lien a un bon taux de clic.'
+  },
+  {
+    cat: 'Display & Search',
+    q: 'Qu\'est-ce que l\'"affiliation" dans le contexte du référencement ?',
+    a: 'Un site <strong>affilié</strong> est rémunéré pour inclure des liens vers un site <strong>affilieur</strong>. C\'est une forme de <strong>contournement de l\'algorithme</strong> Google : on augmente la visibilité d\'un site en créant des liens entrants sans attendre le référencement naturel.'
+  },
+
+  // === E-pub stratégique vs tactique ===
+  {
+    cat: 'Selling & Branding',
+    q: 'Quelle est la différence entre e-pub stratégique et e-pub tactique ? Donnez un exemple de chaque.',
+    a: '<strong>E-pub stratégique</strong> : quand le processus d\'achat se fait 100% en ligne ou comporte plusieurs étapes où la pub en ligne apporte un gain sensible. Ex : <strong>Amazon</strong>.<br><strong>E-pub tactique</strong> : en complément d\'un plan média classique (gain de couverture, besoin de buzz). Ex : <strong>Leclerc</strong> (via bannières et comparateur de prix).'
+  },
+  {
+    cat: 'Selling & Branding',
+    q: 'Quels sont les apports du digital par rapport à la pub classique pour le "selling" ?',
+    a: '<strong>Réduction de l\'incertitude</strong> du taux de conversion.<br>Rapprochement entre exposition au message et acte d\'achat dans le <strong>temps</strong> (quelques clics) et l\'<strong>espace</strong> (quelques pages).<br>Conditions : être relié à un site e-commerce (acquisition de trafic) ou à un outil de récupération de données pour marketing direct ciblé.'
+  },
+  {
+    cat: 'Selling & Branding',
+    q: 'Pourquoi le digital est-il moins efficace que les mass-médias pour le branding ?',
+    a: 'Le digital est performant pour la <strong>personnalisation</strong>, mais moins pour <strong>unifier un imaginaire collectif</strong> autour d\'une marque.<br>Le branding nécessite : émotions, expérience long terme (AirFrance, Coca-Cola), sponsoring (LCL & Tour de France).<br>Le digital intervient surtout pour le <strong>risque réputationnel</strong> et la gestion dans le présent (réseaux sociaux, community managers).'
+  },
+  {
+    cat: 'Selling & Branding',
+    q: 'Qu\'est-ce que le "funnel" de conversion en 6 étapes ?',
+    a: '<strong>1. Considération</strong> (notoriété)<br><strong>2. Recherche d\'informations</strong> (push ou pull)<br><strong>3. Évaluation</strong> (expérience perso + tiers)<br><strong>4. Achat</strong><br><strong>5. Fidélité</strong> (rachat de la marque)<br><strong>6. Recommandation</strong> (client "avocat" de la marque)'
+  },
+  {
+    cat: 'Selling & Branding',
+    q: 'Qu\'est-ce que le "multitasking" et en quoi influence-t-il la stratégie de communication ?',
+    a: 'Le <strong>multitasking</strong> = usage simultané de plusieurs écrans pour des activités complémentaires (ex. TV + smartphone).<br><strong>Influence positive</strong> : rapproche l\'exposition d\'un message de l\'acte d\'achat, crée du trafic sur mots-clés.<br><strong>Influence négative</strong> : disperse l\'audience, complique les <strong>plans crossmédia</strong>.'
+  },
+
+  // === CM3 : Ciblage & monétisation ===
+  {
+    cat: 'Ciblage digital',
+    q: 'Quels sont les 3 défauts du ciblage classique qui ont conduit au ciblage digital ?',
+    a: '<strong>1.</strong> Critère de connaissance des audiences <strong>limité</strong> (comparé aux potentialités du digital)<br><strong>2.</strong> Définition <strong>laxiste</strong> de l\'audience (lire un journal ≠ vraiment lu)<br><strong>3.</strong> Réflexion trop <strong>globale</strong> (pas de mesure de l\'audience par "page de magazine")'
+  },
+  {
+    cat: 'Ciblage digital',
+    q: 'Définir la notion d\'"audience utile" et expliquer pourquoi elle devient obsolète avec le digital.',
+    a: '<strong>Audience utile</strong> = surface de recouvrement entre les lecteurs d\'un support et la cible publicitaire visée.<br>Elle devient <strong>obsolète</strong> avec le digital car celui-ci permet de ne plus cibler des "masses" mais des <strong>individus un par un</strong>, avec possibilité d\'adapter le message pour chaque individu.'
+  },
+  {
+    cat: 'Ciblage digital',
+    q: 'Quels sont les 5 types de ciblage digital ? Donner une définition pour chacun.',
+    a: '<strong>1. Sociodémographique</strong> : CSP, sexe, âge, statut marital (données RS, formulaires)<br><strong>2. Géographique</strong> : localisation de la machine (IP, GPS) pour créer flux physique ou cibler par zone<br><strong>3. Temporel</strong> : diffusion en fonction de l\'heure (ex. barres chocolatées entre 10h-11h30)<br><strong>4. Contextuel</strong> : selon les requêtes/contenus consultés ("affinitaire")<br><strong>5. Comportemental</strong> : selon historique de navigation et d\'achat'
+  },
+  {
+    cat: 'Ciblage digital',
+    q: 'Pourquoi le ciblage sociodémographique est-il peu adapté au "selling" mais efficace pour le "branding" ?',
+    a: 'Le ciblage sociodémo identifie <strong>qui</strong> est l\'internaute (CSP, âge, sexe) mais <strong>ne connaît pas l\'intention d\'achat</strong> au moment présent → peu adapté au selling.<br>Par contre, il permet de toucher la bonne cible pour travailler l\'image de marque sur le long terme → <strong>efficace pour le branding</strong>.'
+  },
+  {
+    cat: 'Ciblage digital',
+    q: 'Qu\'est-ce que le ciblage contextuel "affinitaire" et comment diffère-t-il du ciblage classique (ex. L\'Oréal) ?',
+    a: '<strong>Ciblage contextuel</strong> = cibler la pub selon les requêtes/contenus consultés par l\'internaute.<br>Similitude classique : L\'Oréal concentre ses pubs sur magazines féminins (thème).<br>Apport digital : <strong>affinité ponctuelle et labile</strong> (l\'intérêt peut être passager) + <strong>individualisation</strong> du ciblage → fin de la notion d\'audience utile.'
+  },
+  {
+    cat: 'Ciblage digital',
+    q: 'Qu\'est-ce que le ciblage comportemental et qui sont les "data providers" ?',
+    a: 'Ciblage basé sur l\'<strong>historique de navigation et d\'achat</strong>.<br>Principe : comportement antérieur prédit la sensibilité à un produit.<br><strong>Data providers</strong> = intermédiaires qui récoltent des parcours de navigation sur des sites sélectionnés et les revendent aux annonceurs.<br>Ex : un data provider vend des profils "intentionnistes d\'achat de voyages en Asie".'
+  },
+
+  // === Retargeting ===
+  {
+    cat: 'Retargeting',
+    q: 'Définir le retargeting : principe, but, et mécanisme du "dynamic retargeting".',
+    a: '<strong>Principe</strong> : repérer les internautes qui n\'ont pas finalisé leur achat et leur diffuser une pub pour les inciter à revenir.<br><strong>But</strong> : optimiser le <strong>taux de conversion</strong>.<br><strong>Dynamic retargeting</strong> : automatiser l\'affichage d\'une pub directement sur les <strong>produits spécifiques</strong> que l\'internaute était en passe d\'acheter (ex. Criteo).'
+  },
+  {
+    cat: 'Retargeting',
+    q: 'Quels sont les 2 inconvénients du retargeting pour les annonceurs ?',
+    a: '<strong>1.</strong> Risque de payer pour des <strong>internautes captifs</strong> (qui auraient acheté de toute façon sans la pub) → dépense inutile.<br>NB : c\'est cette incertitude sur la captivité qui fait la richesse des intermédiaires.<br><strong>2.</strong> Risque que leurs <strong>données soient utilisées par les concurrents</strong> via les mêmes data providers/régies.'
+  },
+  {
+    cat: 'Retargeting',
+    q: 'Comment Criteo fonctionne-t-il économiquement ?',
+    a: 'Criteo est un intermédiaire du retargeting qui :<br><strong>1.</strong> Achète des <strong>espaces publicitaires invendus à bas coût</strong> (inventaire résiduel)<br><strong>2.</strong> Les revend avec de la publicité <strong>reciblée individuellement</strong> avec des <strong>marges très importantes</strong><br>Il analyse +120 signaux d\'intention par jour à partir de 35 milliards d\'événements de navigation.'
+  },
+
+  // === Display technique ===
+  {
+    cat: 'Marché du display',
+    q: 'Qu\'est-ce qui est comparable et qu\'est-ce qui est nouveau entre médiaplanning classique et display digital ?',
+    a: '<strong>Comparable</strong> : marché régi par l\'offre et la demande d\'espace ; prix très variables selon les moments et sites.<br><strong>Nouveau</strong> :<br>- <strong>Instantanéité</strong> du marché (≠ négociations long terme)<br>- <strong>Automatisation</strong> par l\'informatique (effet de levier de la convergence)<br>- Fixation des prix aux <strong>enchères en temps réel</strong>'
+  },
+  {
+    cat: 'Marché du display',
+    q: 'Quelle est la différence entre régies "Premium" et régies "Ad networks" ?',
+    a: '<strong>Premium</strong> : regroupent des espaces de sites très fréquentés (Le Monde, Le Figaro, MSN...). Vendent des packs thématiques. Prix élevés.<br><strong>Ad networks</strong> : commercialisent l\'<strong>invendu du premium</strong> à moindre coût. Prix faibles mais bonne efficacité. Système d\'enchères pour épuiser l\'inventaire. Ex. <strong>Google Display Networks</strong>.'
+  },
+  {
+    cat: 'Marché du display',
+    q: 'Expliquer le mécanisme des "Ads Exchanges" (SSP / DSP / Ad exchange / Trading desk).',
+    a: '<strong>Ad Exchange</strong> = bourse de la publicité display, fixation du prix en temps réel par enchères.<br><strong>Côté vendeur</strong> : Éditeur → Régie → <strong>SSP</strong> (Supply Side Platform) → Ad Exchange<br><strong>Côté acheteur</strong> : Trading Desk → <strong>DSP</strong> (Demand Side Platform) → Ad Exchange<br>L\'ad exchange attribue l\'espace à l\'enchère la plus haute au-dessus du prix minimum.'
+  },
+  {
+    cat: 'Marché du display',
+    q: 'Expliquer les 3 cas possibles lors d\'une enchère d\'espace publicitaire digital.',
+    a: '<strong>Cas 1</strong> : 1 seul acheteur au-dessus du prix mini → remporte l\'espace au <strong>prix mini</strong>.<br><strong>Cas 2</strong> : Plusieurs acheteurs au-dessus du prix mini → l\'espace est attribué au plus haut enchérisseur mais il paie un prix juste au-dessus de <strong>son concurrent immédiat</strong> (enchère Vickrey).<br><strong>Cas 3</strong> : Aucun acheteur au-dessus du prix mini → l\'espace est <strong>remis à disposition de l\'éditeur</strong>.'
+  },
+
+  // === Formules et ratios ===
+  {
+    cat: 'Formules & mesures',
+    q: 'Comment calcule-t-on les ratios r1 et r2 pour mesurer l\'efficacité d\'une campagne de lancement ?',
+    a: '<strong>r1</strong> = (coût conception message + coût médiaplanning) / <strong>objectif anticipé</strong> du revenu des ventes<br><strong>r2</strong> = (coût conception message + coût médiaplanning) / <strong>revenu effectif</strong> des ventes<br><br>La campagne est <strong>optimisée</strong> si <strong>r1 ≥ r2</strong> (les revenus effectifs ont atteint ou dépassé les objectifs).'
+  },
+  {
+    cat: 'Formules & mesures',
+    q: 'Pour une campagne long terme, comment interprète-t-on r1 ≥ r2 selon les variations ?',
+    a: 'On compare r à deux instants t1 (r1) et t2 (r2). Campagne optimisée si r1 ≥ r2, c\'est-à-dire quand :<br>- Médiaplanning et revenus ont <strong>varié dans les mêmes proportions</strong> (r1 = r2)<br>- Médiaplanning stable, revenus <strong>augmentent</strong> (r1 > r2)<br>- Médiaplanning croît moins vite que les revenus (r1 > r2)<br>NB : indicateur partiel car les ventes dépendent d\'autres facteurs (pouvoir d\'achat, etc.)'
+  },
+  {
+    cat: 'Formules & mesures',
+    q: 'Qu\'est-ce que le CPM et le CPC ? Dans quel contexte utilise-t-on l\'un plutôt que l\'autre ?',
+    a: '<strong>CPM</strong> (coût pour mille) : on paie pour 1000 affichages, qu\'il y ait clic ou non. Privilégié pour le <strong>branding</strong> (visibilité).<br><strong>CPC</strong> (coût par clic) : on paie uniquement quand l\'internaute clique. Privilégié pour le <strong>selling</strong> (conversion). Prix fixé aux enchères (Google).<br>Le CPC est plus complexe car implique aussi l\'achat de mots-clés.'
+  },
+  {
+    cat: 'Formules & mesures',
+    q: 'Définir : taux de conversion, taux de complétion, taux de clic.',
+    a: '<strong>Taux de conversion</strong> : % de visiteurs/exposés qui réalisent l\'acte d\'achat. Objectif central du selling.<br><strong>Taux de complétion</strong> : % de vidéos publicitaires visionnées en entier (varie selon la durée).<br><strong>Taux de clic</strong> : % d\'internautes exposés à une bannière qui cliquent dessus (0,1% à 0,5% pour les bannières classiques).'
+  },
+
+  // === Vie privée & éthique ===
+  {
+    cat: 'Éthique & données',
+    q: 'Quelles sont les 2 critiques majeures sur la collecte de données personnelles pour le ciblage digital ?',
+    a: '<strong>1. Usage dans les sociétés non-démocratiques</strong> : tracking et data mining peuvent être détournés à des fins de surveillance ou de contrôle politique.<br><strong>2. Frontière public/intime</strong> : les techniques de prédictibilité du marketing digital sont transférées à d\'autres champs (ex. justice prédictive) → erosion de la vie privée.'
+  },
+  {
+    cat: 'Éthique & données',
+    q: 'Qu\'est-ce qu\'un "data broker" et pourquoi est-il problématique ?',
+    a: 'Un <strong>data broker</strong> = intermédiaire qui collecte, agrège et revend des données personnelles sur les internautes (parcours de navigation, comportements d\'achat, profils sociodémo).<br>Problèmes : <strong>opacité des pratiques</strong>, données utilisées sans consentement éclairé, risque de réutilisation malveillante, violation potentielle du RGPD.'
+  },
+
+  // === CM4 : Com événementielle & institutionnelle ===
+  {
+    cat: 'Com institutionnelle & événementielle',
+    q: 'Quelle est la différence fondamentale entre communication institutionnelle (corporate) et communication événementielle ?',
+    a: '<strong>Com institutionnelle (corporate)</strong> : concerne l\'organisation elle-même ; valorise ses valeurs, anticipe les crises, soutient les formes de communication opérationnelles, peut mobiliser les membres en interne.<br><strong>Com événementielle</strong> : conçoit ou met en scène un événement ; sponsorise un événement existant ; vise à associer une émotion à une marque et susciter intérêt/sympathie du public.'
+  },
+  {
+    cat: 'Com institutionnelle & événementielle',
+    q: 'Quelles sont les cibles spécifiques de la communication institutionnelle ?',
+    a: '<strong>1. Les pouvoirs publics</strong> : conditions de travail, respect de l\'environnement, comportement financier<br><strong>2. Les membres de l\'organisation</strong> : salariés, adhérents, futurs membres<br><strong>3. L\'opinion publique</strong> : le citoyen plus que le consommateur, ou le consommateur fidèle'
+  },
+  {
+    cat: 'Com institutionnelle & événementielle',
+    q: 'Quels sont les 4 objectifs principaux de la communication institutionnelle et événementielle ?',
+    a: '<strong>1.</strong> Accroître la <strong>notoriété</strong> de l\'organisation<br><strong>2.</strong> Donner une image <strong>originale, différenciative et positive</strong><br><strong>3.</strong> <strong>Modifier / faire évoluer</strong> l\'image de l\'organisation<br><strong>4.</strong> Renforcer la <strong>cohésion</strong> des membres (personnels, adhérents)'
+  },
+  {
+    cat: 'Com institutionnelle & événementielle',
+    q: 'Qu\'est-ce que "médiatiser une expérience de médiation" dans le contexte de la com événementielle ?',
+    a: 'La com événementielle crée d\'abord une <strong>médiation</strong> : un moment de contact direct entre la marque et un public restreint (événement sportif, culturel, etc.).<br>L\'enjeu stratégique est ensuite de <strong>médiatiser</strong> cette expérience (via réseaux sociaux, RP, couverture presse) pour en amplifier la portée bien au-delà des participants directs.'
+  },
+  {
+    cat: 'Com institutionnelle & événementielle',
+    q: 'Quelles sont les 4 stratégies clés pour réussir une communication événementielle ou institutionnelle ?',
+    a: '<strong>1.</strong> Transformer la <strong>médiation en médiatisation</strong> (relayer l\'événement)<br><strong>2.</strong> Articuler les opérations à la <strong>communication globale</strong> (RS, relations-presse)<br><strong>3.</strong> Maintenir des <strong>partenariats sur le long terme</strong> (ex. LCL & Tour de France)<br><strong>4.</strong> Se méfier des <strong>contingences matérielles</strong> (climat, dopage, effets de mode)'
+  },
+  {
+    cat: 'Com institutionnelle & événementielle',
+    q: 'Pourquoi les années 1990 constituent-elles un tournant pour la communication institutionnelle ?',
+    a: 'Une série d\'événements érode la confiance des citoyens dans les organisations :<br>- <strong>Crises sanitaires</strong> (vache folle)<br>- <strong>Travail des enfants</strong> (Nike)<br>- <strong>Malversations financières</strong> (Elf)<br>- <strong>Obsolescence programmée</strong>, pollution<br>- Durcissement des lois (tabac, alcool, environnement)<br>→ Montée de la <strong>RSE</strong> et du développement durable comme réponse.'
+  },
+  {
+    cat: 'Com institutionnelle & événementielle',
+    q: 'Quelle est la différence entre mécénat et sponsoring ?',
+    a: '<strong>Mécénat</strong> : soutien financier ou matériel à une activité d\'intérêt général <strong>sans contrepartie directe</strong> attendue du bénéficiaire.<br><strong>Sponsoring</strong> : attend une <strong>contrepartie</strong> (mise en visibilité de la marque). Ce n\'est pas une pub centrée sur le produit, mais sur l\'association imaginaire entre les <strong>valeurs de l\'événement</strong> et l\'identité de l\'entreprise.'
+  },
+  {
+    cat: 'Com institutionnelle & événementielle',
+    q: 'Quels sont les 4 types de mécénat et les 3 principaux domaines d\'intervention ?',
+    a: '<strong>Types</strong> :<br>- <strong>Financier</strong> : apport de fonds<br>- <strong>En nature</strong> : locaux, biens, services<br>- <strong>Technologique</strong> : savoir-faire<br>- <strong>De compétences</strong> : délégation de salariés<br><br><strong>Domaines (en dépenses)</strong> :<br>- Éducation (24%) · Culture (22%) · Solidarité (21%)'
+  },
+  {
+    cat: 'Com institutionnelle & événementielle',
+    q: 'Pourquoi la "pétition de principe" ne suffit-elle pas en communication institutionnelle ?',
+    a: 'La com institutionnelle doit s\'appuyer sur des <strong>actions de long terme</strong> : il faut <strong>engager les actes avant de les valoriser</strong>. Simplement proclamer des valeurs (pétition de principe) sans actes concrets est perçu comme du <strong>greenwashing</strong> ou de l\'hypocrisie. La différence avec la publicité : on ne peut pas se contenter d\'affirmer, il faut prouver.'
+  },
+  {
+    cat: 'Com institutionnelle & événementielle',
+    q: 'Pourquoi la culture est-elle un domaine stratégique pour le sponsoring en termes de ciblage ?',
+    a: 'La culture est <strong>marquée sociologiquement</strong> : chaque forme culturelle (opéra, festival de musique, cinéma d\'auteur) attire une CSP et un profil démographique particulier. C\'est donc une opportunité de <strong>segmentation précise des cibles</strong>, bien plus fine que les mass-médias. Ex. : sponsoriser un opéra pour toucher des CSP+.'
+  },
+  {
+    cat: 'Com institutionnelle & événementielle',
+    q: 'Qu\'est-ce que le "placement de produit" et en quoi est-il une forme de communication institutionnelle/sponsoring ?',
+    a: 'Le <strong>placement de produit</strong> = intégration d\'une marque ou d\'un produit dans le contenu d\'une fiction (film, série) contre rémunération. Avantages : contourne l\'aversion publicitaire, associe la marque à des valeurs/émotions du contenu, touche le spectateur dans un moment d\'attention soutenue. Forme de <strong>sponsoring de productions audiovisuelles</strong>.'
+  },
+
+  // === CM1 : Enjeux théoriques de la com des organisations ===
+  {
+    cat: 'Fondements CM1',
+    q: 'Donner les deux définitions d\'une "organisation" selon le cours.',
+    a: '<strong>Définition 1</strong> : un <strong>système de règles</strong> qui régit l\'activité des individus dans un ensemble organisé.<br><strong>Définition 2</strong> : un grand ensemble d\'individus qui entretiennent, dans un lieu donné (matériel ou virtuel), des relations pour accomplir un <strong>but commun</strong> (économique, social, culturel, politique…).<br>→ Une organisation, c\'est à la fois : un espace, un groupe, une identité, des relations entre individus.'
+  },
+  {
+    cat: 'Fondements CM1',
+    q: 'Pourquoi les SIC s\'intéressent-elles aux organisations ?',
+    a: 'Parce que dans les organisations :<br>- Des <strong>informations</strong> y circulent (coordination du travail)<br>- Des <strong>paroles</strong> s\'y échangent (réunions, dialogues informels)<br>- Elles émettent des <strong>discours et messages</strong> vers l\'extérieur (pub, com institutionnelle, site web, RS)<br>→ La com des organisations analyse l\'ensemble des <strong>processus d\'information et de communication</strong> mis en œuvre dans et par les organisations.'
+  },
+  {
+    cat: 'Fondements CM1',
+    q: 'Quelle est la tension centrale dans le champ des SIC appliquées aux organisations ?',
+    a: 'Les chercheurs sont écartelés entre :<br><strong>Approche managériale</strong> : produire des outils au <strong>service des organisations</strong> → risque d\'instrumentalisation et de déterminisme<br><strong>Approche critique</strong> : comprendre <strong>pourquoi la communication ne passe pas</strong>, critiquer les usages de pouvoir et la marchandisation de la communication (sociologues, linguistes)'
+  },
+  {
+    cat: 'Fondements CM1',
+    q: 'Quelles sont les 2 grandes approches critiques de la communication des organisations ?',
+    a: '<strong>Critique 1</strong> : La com interne au service d\'enjeux de <strong>pouvoir et de domination</strong> dans l\'entreprise (rôle des TIC, com managériale).<br><strong>Critique 2</strong> : La <strong>marchandisation de la communication</strong> :<br>- <strong>Adorno</strong> : standardisation culturelle à l\'heure des mass-médias<br>- <strong>Habermas</strong> (<em>L\'Espace public</em>) : fin de l\'esprit critique, changement de statut de la publicité dans la presse'
+  },
+  {
+    cat: 'Fondements CM1',
+    q: 'Quels sont les principaux objectifs de communication d\'une organisation ?',
+    a: '- Lancer un produit / gagner des parts de marché (<strong>selling</strong>)<br>- Conserver sa notoriété suite à une <strong>crise</strong><br>- Construire une image de marque sur le long terme (<strong>branding</strong>)<br>- Informer ses <strong>actionnaires</strong>, <strong>adhérents</strong>, <strong>administrés</strong><br>- Faire campagne (hommes politiques, partis)<br>NB : ces objectifs sont souvent <strong>combinés</strong>.'
+  },
+  {
+    cat: 'Fondements CM1',
+    q: 'Quels sont les 4 grands acteurs du marché de la communication ?',
+    a: '<strong>1. Médias/éditeurs</strong> ("créditeurs") : TV, presse, radio, affichage, cinéma, internet<br><strong>2. Annonceurs</strong> ("débiteurs") : entreprises qui achètent des espaces (grande distrib, mode, tourisme, automobile)<br><strong>3. Agences de communication</strong> : conseil, conception des messages, achat d\'espaces<br><strong>4. Organismes de régulation</strong> : ARPP, ACPM, Médiamétrie, ARCOM'
+  },
+  {
+    cat: 'Fondements CM1',
+    q: 'Quel est le rôle de chaque organisme de régulation : ARPP, ACPM, Médiamétrie, ARCOM ?',
+    a: '<strong>ARPP</strong> : liberté d\'expression publicitaire + respect du consommateur<br><strong>ACPM</strong> : certification des tirages de presse (ciblage + fixation des prix des espaces)<br><strong>Médiamétrie</strong> : mesure des audiences TV<br><strong>ARCOM</strong> : contrôle de l\'éthique audiovisuelle + pouvoir de sanction (ex. TPMP)'
+  },
+  {
+    cat: 'Fondements CM1',
+    q: 'Quelles sont toutes les cibles possibles de la communication d\'une organisation ?',
+    a: '- Les <strong>consommateurs</strong><br>- Les <strong>partenaires économiques</strong><br>- Les <strong>médias</strong> (relations-presse)<br>- Les <strong>leaders d\'opinion</strong> (influenceurs, web communautaire)<br>- Les <strong>membres de l\'organisation</strong> (salariés, actionnaires, adhérents, donateurs)<br>- Les <strong>pouvoirs publics</strong> (lobbying, com de crise)'
+  },
+  {
+    cat: 'Fondements CM1',
+    q: 'Quelle est la distinction entre communication interne, externe et de crise ?',
+    a: '<strong>Com interne</strong> : info aux salariés, management par la communication, conduite du changement<br><strong>Com externe</strong> : pub-média, com digitale, relations-presse, com institutionnelle, com événementielle<br><strong>Com de crise</strong> : cibles = médias + pouvoirs publics + membres de l\'organisation<br>→ Nécessité d\'<strong>articulation cohérente</strong> de l\'interne et de l\'externe'
+  },
+  {
+    cat: 'Fondements CM1',
+    q: 'Qu\'est-ce que le "plan de communication" et pourquoi est-il central ?',
+    a: 'La com des organisations articule 4 enjeux :<br>- <strong>Communication et discours</strong><br>- <strong>Économiques et budgétaires</strong><br>- <strong>Sociologie des publics / ciblage</strong><br>- <strong>Management et organisation</strong><br>Chaque enjeu est une contrainte pour les autres (<strong>limitations réciproques</strong>).<br>Le plan de com = outil de <strong>dosage et de compromis</strong> = optimisation des moyens.'
+  },
+  {
+    cat: 'Fondements CM1',
+    q: 'Quelles disciplines et auteurs inspirent la communication des organisations ?',
+    a: '<strong>Sémiologie</strong> : Roland Barthes (<em>Mythologies</em>)<br><strong>Anthropologie</strong> : Marc Augé (<em>Non-lieux</em>)<br><strong>Sciences de gestion</strong> : outils au service de l\'efficacité managériale<br><strong>Sociologie des organisations</strong> :<br>- OST (Taylor) : l\'homme est une <strong>main</strong><br>- Relations humaines (Mayo, Lewin) : l\'homme est un <strong>cœur</strong><br>- Analyse stratégique (Crozier) : l\'homme <strong>maximise son intérêt et son pouvoir</strong>'
+  },
+
+  // === CM5 complément (sans doublons) ===
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Expliquer l\'exemple du télégraphe optique comme illustration du cadre sociotechnique.',
+    a: 'Le télégraphe optique est connu depuis le <strong>17e siècle</strong> mais ne se développe pas faute de structure sociale appropriée.<br>Il se développe dans le contexte de la <strong>Révolution française</strong> (valeurs d\'universalité et d\'égalité).<br>Mais son usage reste limité à la <strong>communication d\'État</strong> : le cadre d\'usage est trop étroit pour une extension plus large.'
+  },
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Comment la TSF (radio) illustre-t-elle la transformation d\'un cadre sociotechnique ?',
+    a: 'La TSF était d\'abord une communication <strong>"point à point"</strong> (maritime/militaire).<br>Évolution du <strong>cadre de fonctionnement</strong> : découverte de la transmission de la voix (triode).<br>Évolution du <strong>cadre d\'usage</strong> : TSF amateur aux USA + urbanisation + repli sur le domicile + production industrielle de récepteurs.<br>→ Transformation en <strong>radiodiffusion "point à masse"</strong> : naissance de la radio telle qu\'on la connaît.'
+  },
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Quels sont les 2 profils d\'usagers face aux TIC et les 2 modes d\'apprentissage ?',
+    a: '<strong>Profils</strong> :<br>- <strong>L\'informaticien amateur</strong> : l\'ordinateur est objet de connaissance (curiosité intrinsèque)<br>- <strong>Le praticien profane</strong> : approche instrumentale, savoir-faire pratique<br><br><strong>Apprentissage</strong> :<br>- <strong>Empirique</strong> : expérimentation, "bidouillage"<br>- <strong>Par filière d\'usages</strong> : contraintes déjà intégrées dans la culture technique (ex. trop habitué aux PC pour passer sur Mac)'
+  },
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Que recouvre la notion de "culture technologique" ?',
+    a: 'La culture technologique regroupe 3 dimensions :<br><strong>Héritage technologique</strong> : les techniques et usages transmis par l\'environnement (famille, école, société)<br><strong>Carrière technologique</strong> : trajectoire d\'apprentissage et d\'appropriation des outils au fil du temps<br><strong>Compétence technologique</strong> : maîtrise effective des outils dans des contextes précis'
+  },
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Sur quelles 2 nécessités sociales les modifications des usages prescrits prennent-elles racine ?',
+    a: '<strong>1. Maintien de l\'équilibre familial interne</strong> : adapter l\'usage pour préserver les relations au sein du foyer (ex. consentement négocié à la géolocalisation des enfants).<br><strong>2. Assurer des relations avec l\'extérieur</strong> dans une société d\'<strong>atomisation individuelle</strong> : les TIC comblent le manque de lien social (ex. connexion permanente aux USA post 11-septembre — cf. Sherry Turkle, <em>Seuls Ensemble</em>).'
+  },
+
+  // === CM5 : Usages sociaux des TIC ===
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Quelle est la différence entre "technique" et "technologie" selon l\'approche sociotechnique ?',
+    a: '<strong>Technique</strong> = objet ou procédé technique en lui-même.<br><strong>Technologie</strong> = technique + discours + usages sociaux particuliers. La technique devient technologie dès lors qu\'elle est <strong>plongée dans un ensemble sociopolitique</strong>.<br>Ex. l\'imprimerie : même technique, mais technologie différente en Chine (renforce le pouvoir central) et en Europe (facilite les mouvements révolutionnaires).'
+  },
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Définir "usage social" d\'une technologie et le distinguer du simple "usage".',
+    a: '<strong>Usage</strong> = utilisation d\'un média/technologie, repérable à travers des pratiques et représentations.<br><strong>Usage social</strong> = l\'usage devient social quand il est <strong>stabilisé</strong> et qu\'on peut saisir ses conditions sociales d\'émergence et la manière dont il <strong>participe de l\'identité sociale</strong> des individus.<br>Ex. : le Minitel, conçu pour des infos administratives, est devenu massivement la "messagerie rose" (usage inattendu).'
+  },
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Qu\'est-ce que le "cadre sociotechnique de développement de l\'innovation" ?',
+    a: 'Combinaison de deux cadres :<br><strong>Cadre de fonctionnement</strong> : contraintes techniques de l\'objet (ce qu\'il permet ou interdit techniquement)<br><strong>Cadre d\'usage</strong> : usages sociaux effectifs de l\'objet (ce que les gens en font vraiment)<br>→ L\'innovation se développe quand ces deux cadres se rencontrent. Si les possibilités techniques et les attentes sociales ne se rejoignent pas, <strong>l\'innovation n\'émerge pas</strong>.'
+  },
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Qu\'est-ce que le "déterminisme technique" et le "déterminisme social" ? Quelle est la limite de chacun ?',
+    a: '<strong>Déterminisme technique</strong> : une technique engendrerait mécaniquement des changements sociaux (promesse techno = réalité sociale). Limite : ignore les usages effectifs et le contexte social.<br><strong>Déterminisme social</strong> : tous les changements sociaux sont le fait de l\'homme seul, la technique n\'a pas d\'incidence. Limite : ignore les contraintes réelles des objets techniques.'
+  },
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Quelle est la contribution de Michel de Certeau à la compréhension des usages des TIC ?',
+    a: 'De Certeau (<em>L\'Invention du quotidien</em>) montre que :<br>- Les usages prescrits (par les concepteurs) ≠ usages effectifs (des utilisateurs)<br>- Les usagers forment des <strong>tactiques</strong> pour saisir les failles des objets et transformer l\'usage envisagé à des fins d\'<strong>émancipation personnelle</strong><br>- La technique est un <strong>caméléon</strong> qui reflète la texture du contexte dans lequel elle se trouve.'
+  },
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Quels sont les différents processus de déviance par rapport aux usages prescrits des TIC ?',
+    a: '<strong>1. Modulation des capacités</strong> : majoritairement des sous-usages (on n\'utilise qu\'une fraction des fonctionnalités)<br><strong>2. Résistance au changement</strong> : fort en entreprise, nécessite un accompagnement par la communication<br><strong>3. Combler des vides sociaux</strong> : ex. Minitel/messagerie rose, connexion permanente aux USA post 11-septembre (cf. Sherry Turkle, <em>Seuls Ensemble</em>)'
+  },
+  {
+    cat: 'Usages sociaux des TIC',
+    q: 'Qu\'est-ce que le "technophobe" et le "technophile" ? Pourquoi ces deux postures sont-elles insuffisantes ?',
+    a: '<strong>Technophobe</strong> : la technique est étrangère à l\'homme, mauvaise par nature, lui donne un pouvoir autonome dangereux.<br><strong>Technophile</strong> : la technique contient ses propres effets, promet le progrès, communication idéale et transparente (ex. One Laptop Per Child).<br>Limite commune : les deux font du <strong>déterminisme</strong> (l\'outil contient ses effets) et ignorent la complexité des usages sociaux réels.'
+  },
+
+  // === CM6 : Changement dans les organisations ===
+  {
+    cat: 'Changement organisationnel',
+    q: 'Selon les hypothèses du cours, qu\'est-ce qui détermine le changement dans une organisation ?',
+    a: 'Le changement dépend de <strong>conditions multiples et variables</strong> liées aux rationalités, logiques et cultures propres à chaque organisation (→ <strong>cas par cas</strong>).<br>C\'est la résultante des <strong>contraintes posées par l\'organisation</strong> et des <strong>traductions</strong> qu\'en font les acteurs concernés.<br>C\'est parce qu\'il s\'agit de traductions que la <strong>communication interne</strong> est impliquée.'
+  },
+  {
+    cat: 'Changement organisationnel',
+    q: 'Qu\'est-ce que la "culture d\'entreprise" et quel est son rapport ambigu au changement ?',
+    a: 'La <strong>culture d\'entreprise</strong> = ensemble de modes d\'action et de pensée routiniers et efficaces (naturalisés par les employés anciens, visibles pour les néo-arrivants).<br>À première vue : <strong>frein au changement</strong> (résistance aux routines).<br>MAIS : la culture est un <strong>processus dynamique</strong> → le changement réussi est un <strong>"bricolage" / "métissage" culturel</strong>, à accompagner par la communication (pas une substitution brutale).'
+  },
+  {
+    cat: 'Changement organisationnel',
+    q: 'Quels sont les 3 types de culture organisationnelle et leur rapport au changement ?',
+    a: '<strong>Cultures orientées vers le marché</strong> : individualisme, compétition, incitation au risque. Ex. banques. Plus ouvertes au changement.<br><strong>Cultures orientées vers la production</strong> : esprit collégial, sens du collectif. Ex. entreprises industrielles. <strong>Résistance au changement</strong>.<br><strong>Cultures bureaucratiques</strong> : prééminence des normes et de la hiérarchie. Ex. service public. <strong>Forte résistance au changement</strong>.'
+  },
+  {
+    cat: 'Changement organisationnel',
+    q: 'Expliquer la contribution de Bernoux à la compréhension du changement organisationnel.',
+    a: 'Pour <strong>Bernoux</strong>, le changement n\'est accepté que s\'il permet ou facilite la <strong>maîtrise de son travail par l\'exécutant</strong>.<br>Concepts clés : <strong>appropriation du travail</strong>, maintien de l\'<strong>identité professionnelle</strong>, sentiment du <strong>travail bien fait</strong>.<br>→ Un changement qui menace l\'identité professionnelle des acteurs sera rejeté, même s\'il est objectivement rationnel.'
+  },
+  {
+    cat: 'Changement organisationnel',
+    q: 'Qu\'est-ce que la "théorie de la traduction" (Callon & Latour) appliquée au changement ?',
+    a: 'Callon & Latour montrent que le changement n\'est pas une <strong>imposition linéaire</strong> mais une série de <strong>traductions</strong> : chaque acteur s\'approprie, réinterprète et adapte le changement à ses propres intérêts et logiques.<br>Ex. de la pêche des coquilles Saint-Jacques en baie de Saint-Brieuc : aligner les intérêts de chercheurs, pêcheurs et coquilles pour que l\'innovation fonctionne.'
+  },
+  {
+    cat: 'Changement organisationnel',
+    q: 'Quel est le rôle du consultant externe dans le changement organisationnel ? Avantages et problèmes.',
+    a: '<strong>Avantages</strong> :<br>- Rôle de <strong>médiation</strong> entre acteurs<br>- <strong>Briser les routines</strong> de l\'organisation<br><br><strong>Problèmes</strong> :<br>- Risque de <strong>"dire une vérité" sur l\'organisation à la place de ses membres</strong><br>- Instance doublement extérieure → <strong>suspicion renforcée</strong> des membres<br>Ex. le Team Building comme outil de changement forcé.'
+  },
+  {
+    cat: 'Changement organisationnel',
+    q: 'Quels sont les présupposés anthropologiques des principaux courants théoriques du changement ?',
+    a: '<strong>OST (Taylor)</strong> : l\'homme est une <strong>main</strong> (exécutant)<br><strong>RH (Mayo)</strong> : l\'homme est un <strong>cœur</strong> (être social)<br><strong>Crozier</strong> : l\'homme est <strong>libre et stratège</strong><br><strong>Bourdieu</strong> : domination qui se reproduit de génération en génération<br><strong>De Certeau</strong> : l\'homme est un <strong>tacticien et inventeur</strong><br><strong>Bernoux</strong> : l\'homme est un <strong>être de relation et de sens</strong>'
+  },
+  {
+    cat: 'Changement organisationnel',
+    q: 'Qu\'est-ce que le "management par projet" et en quoi fragilise-t-il l\'identité professionnelle ?',
+    a: 'Le <strong>management par projet</strong> = organisation du travail autour de projets temporaires et transversaux (≠ hiérarchie fixe).<br>Conséquences : <strong>précarité de l\'identité professionnelle</strong> car les équipes se recomposent en permanence, les rôles sont flous, et l\'appartenance à un métier ou service est affaiblie.<br>S\'inscrit dans la logique du <strong>flux tendu</strong> qui donne une place grandissante à l\'information/communication.'
+  },
+  {
+    cat: 'Changement organisationnel',
+    q: 'Quelles sont les 5 choses essentielles à faire pour accompagner un changement organisationnel par la communication ?',
+    a: '<strong>1.</strong> Connaître les <strong>problèmes réels</strong> via l\'expression des membres (audit)<br><strong>2.</strong> Comprendre le <strong>sens</strong> que les individus donnent à leur action<br><strong>3.</strong> Comprendre en quoi le changement affecte l\'<strong>identité professionnelle</strong><br><strong>4.</strong> Penser la <strong>durée d\'appropriation</strong> du changement<br><strong>5.</strong> Ne pas parler de "résistance naturelle" mais de <strong>résistances tacticiennes et stratégiques</strong> (De Certeau)'
+  },
+  {
+    cat: 'Changement organisationnel',
+    q: 'Pourquoi les contraintes externes (concurrence, nouvelles technologies) n\'expliquent-elles pas à elles seules la forme du changement ?',
+    a: 'Les contraintes externes sont mobilisées de façon <strong>contradictoire</strong> : les dirigeants les invoquent pour justifier le changement, les membres pour le refuser.<br>Ce ne sont pas les contraintes en elles-mêmes qui donnent son allure au changement, mais le <strong>sens qu\'on leur donne</strong>.<br>D\'où l\'<strong>enjeu de communication</strong> : la même digitalisation peut signifier surveillance accrue OU dynamisation de l\'intelligence collective.'
+  },
+];
+
+let state = {
+  deck: [],
+  currentIndex: 0,
+  isFlipped: false,
+  scores: {},
+  category: 'all',
+  shuffle: false
+};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      state.scores = parsed.scores || {};
+    }
+  } catch(e) {}
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ scores: state.scores }));
+  } catch(e) {}
+}
+
+function getCategories() {
+  const cats = ['all', ...new Set(ALL_CARDS.map(c => c.cat))];
+  return cats;
+}
+
+function buildTabs() {
+  const container = document.getElementById('tabsContainer');
+  container.innerHTML = '';
+  getCategories().forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (cat === state.category ? ' active' : '');
+    btn.textContent = cat === 'all' ? `Tout (${ALL_CARDS.length})` : `${cat} (${ALL_CARDS.filter(c => c.cat === cat).length})`;
+    btn.onclick = () => filterCategory(cat);
+    container.appendChild(btn);
+  });
+}
+
+function filterCategory(cat) {
+  state.category = cat;
+  state.currentIndex = 0;
+  state.isFlipped = false;
+  buildDeck();
+  buildTabs();
+  render();
+}
+
+function buildDeck() {
+  let cards = cat => ALL_CARDS.filter(c => state.category === 'all' || c.cat === state.category);
+  state.deck = cards();
+  if (state.shuffle) {
+    state.deck = [...state.deck].sort(() => Math.random() - 0.5);
+  }
+}
+
+function flipCard() {
+  state.isFlipped = !state.isFlipped;
+  document.getElementById('cardInner').classList.toggle('flipped', state.isFlipped);
+  document.getElementById('cardActions').style.display = state.isFlipped ? 'flex' : 'none';
+}
+
+function nextCard() {
+  if (state.currentIndex < state.deck.length - 1) {
+    state.currentIndex++;
+    state.isFlipped = false;
+    document.getElementById('cardInner').classList.remove('flipped');
+    document.getElementById('cardActions').style.display = 'none';
+    render();
+  }
+}
+
+function prevCard() {
+  if (state.currentIndex > 0) {
+    state.currentIndex--;
+    state.isFlipped = false;
+    document.getElementById('cardInner').classList.remove('flipped');
+    document.getElementById('cardActions').style.display = 'none';
+    render();
+  }
+}
+
+function markCard(correct) {
+  const card = state.deck[state.currentIndex];
+  const key = ALL_CARDS.indexOf(card);
+  state.scores[key] = correct ? 'correct' : 'wrong';
+  saveState();
+  updateStats();
+  updateMasteryGrid();
+  nextCard();
+}
+
+function resetDeck() {
+  state.scores = {};
+  state.currentIndex = 0;
+  state.isFlipped = false;
+  document.getElementById('cardInner').classList.remove('flipped');
+  document.getElementById('cardActions').style.display = 'none';
+  saveState();
+  render();
+}
+
+function toggleShuffle() {
+  state.shuffle = !state.shuffle;
+  const btn = document.getElementById('shuffleBtn');
+  btn.style.background = state.shuffle ? 'rgba(201,169,110,0.3)' : 'rgba(201,169,110,0.15)';
+  btn.textContent = state.shuffle ? '🔀 shuffle ON' : '🔀 shuffle';
+  buildDeck();
+  state.currentIndex = 0;
+  state.isFlipped = false;
+  document.getElementById('cardInner').classList.remove('flipped');
+  document.getElementById('cardActions').style.display = 'none';
+  render();
+}
+
+function updateStats() {
+  const vals = Object.values(state.scores);
+  const correct = vals.filter(v => v === 'correct').length;
+  const wrong = vals.filter(v => v === 'wrong').length;
+  const total = ALL_CARDS.length;
+  const seen = vals.length;
+  document.getElementById('correctCount').textContent = correct;
+  document.getElementById('wrongCount').textContent = wrong;
+  document.getElementById('totalCount').textContent = total;
+  const pct = Math.round((seen / total) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+}
+
+function updateMasteryGrid() {
+  const grid = document.getElementById('masteryGrid');
+  grid.innerHTML = '';
+  ALL_CARDS.forEach((card, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'mastery-dot';
+    if (state.scores[i] === 'correct') dot.classList.add('correct');
+    if (state.scores[i] === 'wrong') dot.classList.add('wrong');
+    const deckIdx = state.deck.indexOf(card);
+    if (deckIdx === state.currentIndex) dot.classList.add('current');
+    dot.title = card.q.substring(0, 60) + '...';
+    dot.onclick = () => {
+      if (deckIdx !== -1) {
+        state.currentIndex = deckIdx;
+        state.isFlipped = false;
+        document.getElementById('cardInner').classList.remove('flipped');
+        document.getElementById('cardActions').style.display = 'none';
+        render();
+      }
+    };
+    grid.appendChild(dot);
+  });
+}
+
+function render() {
+  const total = state.deck.length;
+  if (total === 0) return;
+  const idx = state.currentIndex;
+  const card = state.deck[idx];
+  const globalIdx = ALL_CARDS.indexOf(card);
+
+  document.getElementById('cardCounter').textContent = `Carte ${idx + 1} / ${total}`;
+  document.getElementById('cardQuestion').textContent = card.q;
+  document.getElementById('cardAnswer').innerHTML = card.a;
+  document.getElementById('cardCategory').textContent = card.cat;
+  document.getElementById('cardCategoryBack').textContent = card.cat;
+
+  // Color based on score
+  const scene = document.getElementById('cardScene');
+  if (state.scores[globalIdx] === 'correct') {
+    scene.style.filter = 'drop-shadow(0 0 8px rgba(90,158,111,0.15))';
+  } else if (state.scores[globalIdx] === 'wrong') {
+    scene.style.filter = 'drop-shadow(0 0 8px rgba(192,86,78,0.15))';
+  } else {
+    scene.style.filter = 'none';
+  }
+
+  updateStats();
+  updateMasteryGrid();
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') {
+    e.preventDefault();
+    if (!state.isFlipped) flipCard(); else nextCard();
+  }
+  if (e.key === 'ArrowLeft') prevCard();
+  if (e.key === 'f' || e.key === 'F') flipCard();
+  if (e.key === 'c' && state.isFlipped) markCard(true);
+  if (e.key === 'x' && state.isFlipped) markCard(false);
+});
+
+// Init
+loadState();
+buildDeck();
+buildTabs();
+render();
+</script>
+</body>
+</html>
