@@ -524,13 +524,16 @@
 
   <div class="nav-row">
     <button class="btn-nav" onclick="prevCard()">← Précédent</button>
-    <button class="btn-nav" onclick="resetDeck()">↺ Réinitialiser</button>
-    <button class="btn-nav" onclick="nextCard()">Suivant →</button>
+    <button class="btn-nav" id="resetCatBtn" onclick="resetCategory()">↺ Catégorie</button>
+    <button class="btn-nav" onclick="playWrongOnly()" id="wrongOnlyBtn">🔴 Retravailler erreurs</button>
   </div>
 </div>
 
 <div class="mastery-section">
-  <div class="mastery-title">Progression carte par carte</div>
+  <div class="mastery-title" style="display:flex;align-items:center;gap:1rem;">
+    <span>Progression carte par carte</span>
+    <span id="masteryStats" style="font-size:0.7rem;color:var(--muted);font-family:'DM Mono',monospace;margin-left:auto"></span>
+  </div>
   <div class="mastery-grid" id="masteryGrid"></div>
 </div>
 
@@ -1098,23 +1101,27 @@ function flipCard() {
   document.getElementById('cardActions').style.display = state.isFlipped ? 'flex' : 'none';
 }
 
+function goToCard(idx) {
+  state.currentIndex = idx;
+  state.isFlipped = false;
+  document.getElementById('cardInner').classList.remove('flipped');
+  document.getElementById('cardActions').style.display = 'none';
+  render();
+}
+
 function nextCard() {
   if (state.currentIndex < state.deck.length - 1) {
-    state.currentIndex++;
-    state.isFlipped = false;
-    document.getElementById('cardInner').classList.remove('flipped');
-    document.getElementById('cardActions').style.display = 'none';
-    render();
+    goToCard(state.currentIndex + 1);
+  } else {
+    // Dernière carte : on reste dessus, on peut encore classer
+    // Si tout est classé dans le deck, on propose de retravailler les erreurs
+    checkDeckComplete();
   }
 }
 
 function prevCard() {
   if (state.currentIndex > 0) {
-    state.currentIndex--;
-    state.isFlipped = false;
-    document.getElementById('cardInner').classList.remove('flipped');
-    document.getElementById('cardActions').style.display = 'none';
-    render();
+    goToCard(state.currentIndex - 1);
   }
 }
 
@@ -1125,17 +1132,73 @@ function markCard(correct) {
   saveState();
   updateStats();
   updateMasteryGrid();
-  nextCard();
+
+  // Avancer seulement si pas dernière carte
+  if (state.currentIndex < state.deck.length - 1) {
+    goToCard(state.currentIndex + 1);
+  } else {
+    // Dernière carte classée : reset flip, afficher résumé
+    state.isFlipped = false;
+    document.getElementById('cardInner').classList.remove('flipped');
+    document.getElementById('cardActions').style.display = 'none';
+    render();
+    checkDeckComplete();
+  }
+}
+
+function checkDeckComplete() {
+  // Toutes les cartes du deck classées ?
+  const allClassified = state.deck.every(card => {
+    const key = ALL_CARDS.indexOf(card);
+    return state.scores[key] !== undefined;
+  });
+  const wrongCards = state.deck.filter(card => {
+    const key = ALL_CARDS.indexOf(card);
+    return state.scores[key] === 'wrong';
+  });
+  if (allClassified && wrongCards.length > 0) {
+    setTimeout(() => {
+      const go = confirm(`✓ Deck terminé !\n\n${wrongCards.length} carte(s) à revoir. Lancer une session sur les erreurs ?`);
+      if (go) playWrongOnly();
+    }, 200);
+  } else if (allClassified && wrongCards.length === 0) {
+    setTimeout(() => {
+      alert('🎉 Parfait ! Toutes les cartes de cette catégorie sont validées.');
+    }, 200);
+  }
+}
+
+function playWrongOnly() {
+  // Filtrer les cartes wrongseulement dans la catégorie courante
+  const wrongCards = ALL_CARDS.filter((card, i) => {
+    const inCat = state.category === 'all' || card.cat === state.category;
+    return inCat && state.scores[i] === 'wrong';
+  });
+  if (wrongCards.length === 0) {
+    alert('Aucune carte à revoir dans cette catégorie ! 🎉');
+    return;
+  }
+  state.deck = state.shuffle ? [...wrongCards].sort(() => Math.random() - 0.5) : wrongCards;
+  goToCard(0);
+}
+
+function resetCategory() {
+  // Réinitialiser uniquement les scores des cartes de la catégorie courante
+  const catCards = ALL_CARDS.filter(c => state.category === 'all' || c.cat === state.category);
+  catCards.forEach(card => {
+    const key = ALL_CARDS.indexOf(card);
+    delete state.scores[key];
+  });
+  saveState();
+  buildDeck();
+  goToCard(0);
 }
 
 function resetDeck() {
   state.scores = {};
-  state.currentIndex = 0;
-  state.isFlipped = false;
-  document.getElementById('cardInner').classList.remove('flipped');
-  document.getElementById('cardActions').style.display = 'none';
   saveState();
-  render();
+  buildDeck();
+  goToCard(0);
 }
 
 function toggleShuffle() {
@@ -1152,11 +1215,12 @@ function toggleShuffle() {
 }
 
 function updateStats() {
-  const vals = Object.values(state.scores);
-  const correct = vals.filter(v => v === 'correct').length;
-  const wrong = vals.filter(v => v === 'wrong').length;
+  // Stats globales
+  const allVals = Object.values(state.scores);
+  const correct = allVals.filter(v => v === 'correct').length;
+  const wrong = allVals.filter(v => v === 'wrong').length;
   const total = ALL_CARDS.length;
-  const seen = vals.length;
+  const seen = allVals.length;
   document.getElementById('correctCount').textContent = correct;
   document.getElementById('wrongCount').textContent = wrong;
   document.getElementById('totalCount').textContent = total;
@@ -1168,21 +1232,35 @@ function updateStats() {
 function updateMasteryGrid() {
   const grid = document.getElementById('masteryGrid');
   grid.innerHTML = '';
-  ALL_CARDS.forEach((card, i) => {
+
+  // Cartes de la catégorie courante
+  const catCards = ALL_CARDS.map((card, i) => ({ card, i }))
+    .filter(({ card }) => state.category === 'all' || card.cat === state.category);
+
+  const total = catCards.length;
+  const correct = catCards.filter(({ i }) => state.scores[i] === 'correct').length;
+  const wrong = catCards.filter(({ i }) => state.scores[i] === 'wrong').length;
+  const unseen = total - correct - wrong;
+
+  const statsEl = document.getElementById('masteryStats');
+  if (statsEl) statsEl.textContent = `${correct} ✓  ${wrong} ✗  ${unseen} ?  sur ${total}`;
+
+  catCards.forEach(({ card, i }) => {
     const dot = document.createElement('div');
     dot.className = 'mastery-dot';
     if (state.scores[i] === 'correct') dot.classList.add('correct');
-    if (state.scores[i] === 'wrong') dot.classList.add('wrong');
+    else if (state.scores[i] === 'wrong') dot.classList.add('wrong');
     const deckIdx = state.deck.indexOf(card);
     if (deckIdx === state.currentIndex) dot.classList.add('current');
     dot.title = card.q.substring(0, 60) + '...';
     dot.onclick = () => {
       if (deckIdx !== -1) {
-        state.currentIndex = deckIdx;
-        state.isFlipped = false;
-        document.getElementById('cardInner').classList.remove('flipped');
-        document.getElementById('cardActions').style.display = 'none';
-        render();
+        goToCard(deckIdx);
+      } else {
+        // Carte pas dans le deck courant (ex. mode wrong only), on rebuild
+        buildDeck();
+        const newIdx = state.deck.indexOf(card);
+        if (newIdx !== -1) goToCard(newIdx);
       }
     };
     grid.appendChild(dot);
