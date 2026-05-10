@@ -109,15 +109,42 @@
   }
 
   /* Category tabs */
+  .tabs-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 1rem 0 0;
+    margin: 0 2.5rem;
+  }
+  .tabs-arrow {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 0.5px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    transition: all 0.18s;
+    user-select: none;
+  }
+  .tabs-arrow:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+  .tabs-arrow:active { transform: scale(0.93); }
+  .tabs-arrow.hidden { opacity: 0; pointer-events: none; }
   .tabs {
     display: flex;
     gap: 0.25rem;
-    padding: 1rem 2.5rem 0;
     overflow-x: auto;
+    scroll-behavior: smooth;
     scrollbar-width: none;
+    flex: 1;
+    padding: 0 0.4rem;
   }
   .tabs::-webkit-scrollbar { display: none; }
-
   .tab {
     padding: 0.5rem 1rem;
     border-radius: 6px;
@@ -130,10 +157,14 @@
     color: var(--muted);
     transition: all 0.2s;
     white-space: nowrap;
+    flex-shrink: 0;
   }
-
   .tab:hover { border-color: var(--border2); color: var(--text); }
   .tab.active { background: var(--accent); border-color: var(--accent); color: #0d0e0f; }
+
+  @media (max-width: 600px) {
+    .tabs-wrapper { margin: 0 1rem; }
+  }
 
   /* Card counter */
   .card-counter {
@@ -452,8 +483,12 @@
   <span style="font-size:0.75rem; color:var(--muted); font-family:'DM Mono',monospace" id="progressPct">0%</span>
 </div>
 
-<div class="tabs" id="tabsContainer">
-  <button class="tab active" onclick="filterCategory('all')">Tout</button>
+<div class="tabs-wrapper">
+  <button class="tabs-arrow hidden" id="arrowLeft" onclick="scrollTabs(-1)">&#8249;</button>
+  <div class="tabs" id="tabsContainer">
+    <button class="tab active" onclick="filterCategory('all')">Tout</button>
+  </div>
+  <button class="tabs-arrow hidden" id="arrowRight" onclick="scrollTabs(1)">&#8250;</button>
 </div>
 
 <div class="card-counter" id="cardCounter">Carte 1 / 0</div>
@@ -1010,6 +1045,22 @@ function getCategories() {
   return cats;
 }
 
+function scrollTabs(dir) {
+  const container = document.getElementById('tabsContainer');
+  container.scrollBy({ left: dir * 200, behavior: 'smooth' });
+  setTimeout(updateArrows, 300);
+}
+
+function updateArrows() {
+  const container = document.getElementById('tabsContainer');
+  const left = document.getElementById('arrowLeft');
+  const right = document.getElementById('arrowRight');
+  const canScrollLeft = container.scrollLeft > 2;
+  const canScrollRight = container.scrollLeft + container.clientWidth < container.scrollWidth - 2;
+  left.classList.toggle('hidden', !canScrollLeft);
+  right.classList.toggle('hidden', !canScrollRight);
+}
+
 function buildTabs() {
   const container = document.getElementById('tabsContainer');
   container.innerHTML = '';
@@ -1020,6 +1071,8 @@ function buildTabs() {
     btn.onclick = () => filterCategory(cat);
     container.appendChild(btn);
   });
+  setTimeout(updateArrows, 50);
+  container.addEventListener('scroll', updateArrows, { passive: true });
 }
 
 function filterCategory(cat) {
@@ -1180,6 +1233,7 @@ loadState();
 buildDeck();
 buildTabs();
 render();
+window.addEventListener('resize', updateArrows);
 </script>
 </body>
 </html>
